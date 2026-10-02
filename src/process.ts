@@ -1,5 +1,10 @@
 import Emittery from 'emittery';
-import * as process from 'node:child_process';
+
+import ProcessImplNode from './process-impl-node.js';
+import ProcessImplTauri from './process-impl-tauri.js';
+import detectRuntime from './runtime.js';
+
+import type ProcessIfc from './process-ifc.js';
 
 interface Events {
   disconnect: undefined;
@@ -10,18 +15,26 @@ interface Events {
 
 class Process extends Emittery<Events> {
   private buffer = '';
-  private child: process.ChildProcessWithoutNullStreams;
+  private child: ProcessIfc;
 
   constructor(path: string) {
     super();
 
-    this.child = process.spawn(path);
+    const runtime = detectRuntime();
+
+    if (runtime === 'nodejs') {
+      this.child = new ProcessImplNode(path);
+    } else if (runtime === 'tauri') {
+      this.child = new ProcessImplTauri(path);
+    } else {
+      throw new Error('uci must run in either NodeJs or Tauri environments');
+    }
 
     this.child.on('disconnect', () => this.emit('disconnect'));
-    this.child.on('error', (error) => this.emit('error', error));
-    this.child.on('exit', (code) => this.emit('exit', code ?? 0));
-    this.child.stdout.on('data', (data) => {
-      this.buffer += data;
+    this.child.on('error', (error) => this.emit('error', error.data));
+    this.child.on('exit', (code) => this.emit('exit', code.data));
+    this.child.on('stdout', (stdout) => {
+      this.buffer += stdout.data;
 
       const lines = this.buffer.split('\n');
       this.buffer = lines.pop() ?? '';
@@ -30,9 +43,6 @@ class Process extends Emittery<Events> {
         this.emit('line', line);
       }
     });
-    this.child.stderr.on('data', (data) =>
-      this.emit('error', new Error(data.toString().trim())),
-    );
   }
 
   disconnect(): void {
@@ -44,14 +54,7 @@ class Process extends Emittery<Events> {
   }
 
   async write(input: string): Promise<void> {
-    return new Promise((ok, ko) => {
-      this.child.stdin.write(input, 'utf8', (error) => {
-        if (error) {
-          return ko(error);
-        }
-        ok();
-      });
-    });
+    return this.child.write(input);
   }
 }
 
