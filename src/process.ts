@@ -1,8 +1,6 @@
 import Emittery from 'emittery';
 
 import ProcessImplNode from './process-impl-node.js';
-import ProcessImplTauri from './process-impl-tauri.js';
-import detectRuntime from './runtime.js';
 
 import type ProcessIfc from './process-ifc.js';
 
@@ -17,18 +15,10 @@ class Process extends Emittery<Events> {
   private buffer = '';
   private child: ProcessIfc;
 
-  constructor(path: string) {
+  constructor(path: string, processImpl?: ProcessIfc) {
     super();
 
-    const runtime = detectRuntime();
-
-    if (runtime === 'nodejs') {
-      this.child = new ProcessImplNode(path);
-    } else if (runtime === 'tauri') {
-      this.child = new ProcessImplTauri(path);
-    } else {
-      throw new Error('uci must run in either NodeJs or Tauri environments');
-    }
+    this.child = processImpl ?? new ProcessImplNode(path);
 
     this.child.on('disconnect', () => this.emit('disconnect'));
     this.child.on('error', (error) => this.emit('error', error.data));

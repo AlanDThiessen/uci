@@ -4,6 +4,7 @@ import Options from './options.js';
 import { parsers } from './parser/index.js';
 import Process from './process.js';
 
+import type ProcessIfc from './process-ifc.js';
 import type { Events, GoOptions, ID } from './types.js';
 
 interface RegisterOptions {
@@ -116,10 +117,11 @@ class UCI {
       config = {},
       timeout,
     }: { config?: Record<string, unknown>; timeout?: number } = {},
+    processIfc?: ProcessIfc,
   ) {
     this.#timeout = timeout ?? TIMEOUT;
     this.#config = config;
-    this.process = new Process(path);
+    this.process = new Process(path, processIfc);
 
     this.process.on('line', ({ data }) => this.ingest(data));
     this.process.on('error', ({ data }) => this.#emitter.emit('error', data));
@@ -472,3 +474,5 @@ export type {
   Option,
   Score,
 } from './types.js';
+
+export { type default as ProcessIfc } from './process-ifc.js';
