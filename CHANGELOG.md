@@ -8,6 +8,11 @@ and this project adheres to
 
 ## [Unreleased]
 
+- Created a `ProcessIfc` interface class, and separated the NodeJs specific code
+  into a `ProcessImplNode` class.
+- The defautl NodeJs implementation can be overridden by passing a different
+  implementation when UCI is constructed.
+
 ## [4.1.0] - 2026-04-26
 
 ### Changed
